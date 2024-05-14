@@ -36,12 +36,14 @@
                         <div class="form-group">
                             <div class="Actualizar">
                                 <label for="pokemon">Número de Pokémons a cargar:</label>
-                                <input type="number" name="limit" min="1" max="40" value="20">
+                                <input type="number" name="limit" min="1" max="40" value="<?php echo isset($_POST['limit']) ? $_POST['limit'] : '20'; ?>">
+
                                 <button type="submit" class="btn btn-primary" name="actualizarLista">Actualizar lista</button>
                             </div>
                             <select class='form-control' id='pokemon' name='pokemon'>
                                 <?php
-                                if (isset($_POST['actualizarLista'])) {
+                                $selected_pokemon = isset($_POST['pokemon']) ? $_POST['pokemon'] : ''; // Obtener el Pokémon seleccionado
+                                if (isset($_POST['actualizarLista']) || isset($_POST['cargarDatos'])) {
                                     $amount = $_POST['limit'];
                                     // Realizar una solicitud HTTP a la API para obtener los pokemons
                                     $api_url = 'https://pokeapi.co/api/v2/pokemon/?limit=' . $amount;
@@ -54,7 +56,9 @@
 
                                         // Generar las opciones del select con los pokemons obtenidos
                                         foreach ($pokemons as $poke) {
-                                            echo '<option value="' . $poke['name'] . '">' . $poke['name'] . '</option>';
+                                            // Verificar si este es el Pokémon seleccionado
+                                            $selected = ($selected_pokemon == $poke['name']) ? 'selected' : '';
+                                            echo '<option value="' . $poke['name'] . '" ' . $selected . '>' . $poke['name'] . '</option>';
                                         }
                                     } else {
                                         // Manejar el caso en el que no se puedan obtener los pokemons
@@ -64,6 +68,10 @@
                                 ?>
                             </select>
 
+
+
+
+
                         </div>
                         <button type="submit" class="btn btn-primary botonCargar" name="cargarDatos">Cargar datos del Pokemon</button>
                     </form>
@@ -71,7 +79,7 @@
                     <?php
                     if (isset($_POST['cargarDatos'])) {
                         $selected_pokemon = $_POST['pokemon'];
-                        
+
                         $api_url = 'https://pokeapi.co/api/v2/pokemon/' . $selected_pokemon;
                         $response = file_get_contents($api_url);
                         $pokemon_data = json_decode($response, true);
@@ -83,27 +91,36 @@
                             echo "<p><strong>Nombre:</strong> " . ucfirst($selected_pokemon) . "</p>";
 
                             // Imprimir las habilidades del Pokémon
-                            if (isset($pokemon_data['abilities'])) {
-                                echo "<h3>Habilidades:</h3>";
-                                echo "<ul>";
-                                foreach ($pokemon_data['abilities'] as $ability) {
-                                    echo "<li>";
-                                    echo ucfirst($ability['ability']['name']) . ": ";
+                            if (isset($pokemon_data['abilities'][0])) {
+                                $ability = $pokemon_data['abilities'][0];
+                                echo "<h3>Primera habilidad de " . ucfirst($selected_pokemon) . ":</h3>";
+                                echo "<p>";
+                                echo "Nombre: " . ucfirst($ability['ability']['name']) . "<br>";
 
-                                    // Obtener detalles de la habilidad desde su URL
-                                    $ability_response = file_get_contents($ability['ability']['url']);
-                                    $ability_data = json_decode($ability_response, true);
+                                // Obtener detalles de la habilidad desde su URL
+                                $ability_response = file_get_contents($ability['ability']['url']);
+                                $ability_data = json_decode($ability_response, true);
 
-                                    // Imprimir detalles de la habilidad
-                                    echo $ability_data['effect_entries'][0]['short_effect'];
-                                    echo "</li>";
+                                // Buscar el efecto en inglés dentro de effect_entries
+                                $effect = "";
+                                foreach ($ability_data['effect_entries'] as $entry) {
+
+                                    if ($entry['language']['name'] == 'en') {
+                                        $effect = $entry['effect'];
+                                        break;
+                                    }
                                 }
-                                echo "</ul>";
+
+                                // Imprimir detalles de la habilidad
+                                echo "Efecto: " . $effect . "<br>";
+
+                                echo "<img src='" . $pokemon_data['sprites']['back_default'] . "' alt='Imagen de " . ucfirst($selected_pokemon) . "'><br>";
+                                echo "</p>";
                             } else {
                                 echo "No se encontraron habilidades para este Pokémon.";
                             }
                         } else {
-                            
+
                             echo "No se pueden obtener los datos del Pokémon seleccionado";
                         }
                     }
